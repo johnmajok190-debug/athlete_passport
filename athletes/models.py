@@ -2,6 +2,12 @@ import uuid
 from django.conf import settings
 from django.db import models
 
+
+def generate_athlete_id():
+    """Return a short, public-facing identifier for an athlete profile."""
+    return f"ATH-{uuid.uuid4().hex[:8].upper()}"
+
+
 class Athlete(models.Model):
 
     class Status(models.TextChoices):
@@ -25,6 +31,7 @@ class Athlete(models.Model):
         max_length=20,
         unique=True,
         editable=False,
+        default=generate_athlete_id,
     )
 
     user = models.OneToOneField(
@@ -74,6 +81,5 @@ class Athlete(models.Model):
         auto_now=True,
     )
 
-    
-def __str__(self):
-    return self.user.get_full_name() or self.user.username
+    def __str__(self):
+        return self.user.get_full_name() or self.user.username
