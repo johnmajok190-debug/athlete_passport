@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from sports.models import AthleteSport, Sport, SportPosition
+from sports.models import AthleteSport, Sport, SportPosition, StatType
 
 
 @admin.register(Sport)
@@ -15,6 +15,13 @@ class SportPositionAdmin(admin.ModelAdmin):
     list_display = ("name", "sport", "is_active")
     list_filter = ("sport", "is_active")
     search_fields = ("name", "sport__name")
+
+
+@admin.register(StatType)
+class StatTypeAdmin(admin.ModelAdmin):
+    list_display = ("name", "key", "sport", "unit", "is_active")
+    list_filter = ("sport", "is_active")
+    search_fields = ("name", "key", "sport__name")
 
 
 @admin.register(AthleteSport)

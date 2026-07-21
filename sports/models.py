@@ -3,6 +3,7 @@ import uuid
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
+from django.core.validators import RegexValidator
 
 
 class Sport(models.Model):
@@ -38,6 +39,46 @@ class SportPosition(models.Model):
             models.UniqueConstraint(
                 fields=["sport", "name"],
                 name="unique_position_name_per_sport",
+            )
+        ]
+        ordering = ["sport__name", "name"]
+
+    def __str__(self):
+        return f"{self.sport.name}: {self.name}"
+
+
+class StatType(models.Model):
+    """A sport-specific performance metric, such as goals or sprint_time_s."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    sport = models.ForeignKey(
+        Sport,
+        on_delete=models.CASCADE,
+        related_name="stat_types",
+    )
+    name = models.CharField(max_length=100)
+    key = models.CharField(
+        max_length=60,
+        validators=[
+            RegexValidator(
+                regex=r"^[a-z][a-z0-9_]*$",
+                message="Use lowercase letters, numbers, and underscores only.",
+            )
+        ],
+        help_text="Stable API key, for example goals or sprint_time_s.",
+    )
+    unit = models.CharField(
+        max_length=30,
+        default="count",
+        help_text="For example count, metres, seconds, or percent.",
+    )
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["sport", "key"],
+                name="unique_stat_key_per_sport",
             )
         ]
         ordering = ["sport__name", "name"]
