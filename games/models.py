@@ -1,4 +1,5 @@
 import uuid
+from decimal import Decimal
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -48,8 +49,10 @@ class Game(models.Model):
         max_length=255,
     )
 
-    format = models.CharField(
-        max_length=50,
+    format = models.ForeignKey(
+        "sports.SportFormat",
+        on_delete=models.PROTECT,
+        related_name="games",
     )
 
     status = models.CharField(
@@ -85,6 +88,15 @@ class Game(models.Model):
         if self.started_at and self.ended_at and self.ended_at < self.started_at:
             raise ValidationError(
                 {"ended_at": "The game cannot end before it starts."}
+            )
+
+        if (
+            self.sport_id
+            and self.format_id
+            and self.format.sport_id != self.sport_id
+        ):
+            raise ValidationError(
+                {"format": "The selected format must belong to the game sport."}
             )
 
     def save(self, *args, **kwargs):
@@ -188,6 +200,16 @@ class GameParticipant(models.Model):
         if self.position_id and self.position.sport_id != self.game.sport_id:
             raise ValidationError(
                 {"position": "The position must belong to the game sport."}
+            )
+
+        if self.game.format.has_teams and not self.team:
+            raise ValidationError(
+                {"team": "Choose the participant's team for this format."}
+            )
+
+        if not self.game.format.has_teams and self.team:
+            raise ValidationError(
+                {"team": "Individual formats do not use Team A or Team B."}
             )
 
     def save(self, *args, **kwargs):
@@ -314,7 +336,11 @@ class GameStat(models.Model):
     value = models.DecimalField(
         max_digits=12,
         decimal_places=3,
+        null=True,
+        blank=True,
     )
+
+    boolean_value = models.BooleanField(null=True, blank=True)
 
     recorded_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -356,12 +382,38 @@ class GameStat(models.Model):
                 {"stat_type": "The selected stat type does not belong to this game's sport."}
             )
 
+        if self.stat_type.value_type == self.stat_type.ValueType.BOOLEAN:
+            if self.boolean_value is None or self.value is not None:
+                raise ValidationError(
+                    {
+                        "boolean_value": (
+                            "Boolean stat types require only a true or false value."
+                        )
+                    }
+                )
+            return
+
+        if self.value is None or self.boolean_value is not None:
+            raise ValidationError(
+                {"value": "Numeric stat types require only a numeric value."}
+            )
+
+        numeric_value = Decimal(self.value)
+        if (
+            self.stat_type.value_type == self.stat_type.ValueType.INTEGER
+            and numeric_value != numeric_value.to_integral_value()
+        ):
+            raise ValidationError(
+                {"value": "Integer stat types cannot contain decimal places."}
+            )
+
     def save(self, *args, **kwargs):
         self.full_clean()
         return super().save(*args, **kwargs)
 
     def __str__(self):
+        value = self.boolean_value if self.boolean_value is not None else self.value
         return (
             f"{self.participant.athlete} "
-            f"- {self.stat_type.name}: {self.value}"
+            f"- {self.stat_type.name}: {value}"
         )

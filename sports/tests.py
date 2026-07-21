@@ -5,7 +5,7 @@ from django.test import TestCase
 
 from accounts.models import User
 from athletes.models import Athlete
-from sports.models import AthleteSport, Sport, SportPosition
+from sports.models import AthleteSport, Sport, SportFormat, SportPosition, StatType
 
 
 class AthleteSportModelTests(TestCase):
@@ -63,3 +63,30 @@ class AthleteSportModelTests(TestCase):
                 sport=self.athletics,
                 is_primary=True,
             )
+
+    def test_stat_type_requires_a_unique_key_for_each_sport(self):
+        StatType.objects.create(
+            sport=self.football,
+            name="Goals",
+            key="goals",
+            short_name="G",
+        )
+        duplicate = StatType(
+            sport=self.football,
+            name="Goals scored",
+            key="goals",
+        )
+
+        with self.assertRaises(ValidationError):
+            duplicate.full_clean()
+
+    def test_sport_format_rejects_an_invalid_player_range(self):
+        sport_format = SportFormat(
+            sport=self.football,
+            name="Invalid format",
+            min_players_per_side=11,
+            max_players_per_side=7,
+        )
+
+        with self.assertRaises(ValidationError):
+            sport_format.full_clean()

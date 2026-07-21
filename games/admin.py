@@ -7,7 +7,7 @@ from games.models import Game, GameParticipant, GameStat, GameVerification
 class GameAdmin(admin.ModelAdmin):
     list_display = ("title", "sport", "location", "format", "status", "started_at")
     list_filter = ("sport", "status")
-    search_fields = ("title", "location", "format")
+    search_fields = ("title", "location", "format__name")
 
 
 @admin.register(GameParticipant)
@@ -19,7 +19,14 @@ class GameParticipantAdmin(admin.ModelAdmin):
 
 @admin.register(GameStat)
 class GameStatAdmin(admin.ModelAdmin):
-    list_display = ("participant", "stat_type", "value", "period", "game")
+    list_display = (
+        "participant",
+        "stat_type",
+        "value",
+        "boolean_value",
+        "period",
+        "game",
+    )
     list_filter = ("game__sport", "stat_type", "period")
     search_fields = ("participant__athlete__athlete_id", "stat_type__name", "game__title")
 

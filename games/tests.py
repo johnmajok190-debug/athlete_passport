@@ -7,7 +7,7 @@ from django.utils import timezone
 from accounts.models import User
 from athletes.models import Athlete
 from games.models import Game, GameParticipant, GameStat, GameVerification
-from sports.models import AthleteSport, Sport, SportPosition, StatType
+from sports.models import AthleteSport, Sport, SportFormat, SportPosition, StatType
 
 
 class GameModelTests(TestCase):
@@ -41,6 +41,17 @@ class GameModelTests(TestCase):
             sport=self.football,
             name="Midfielder",
         )
+        self.football_format = SportFormat.objects.create(
+            sport=self.football,
+            name="11-a-side",
+            min_players_per_side=11,
+            max_players_per_side=11,
+        )
+        self.athletics_format = SportFormat.objects.create(
+            sport=self.athletics,
+            name="100 metres",
+            has_teams=False,
+        )
         self.football_profile = AthleteSport.objects.create(
             athlete=self.athlete,
             sport=self.football,
@@ -67,7 +78,7 @@ class GameModelTests(TestCase):
             title="Nairobi Youth Cup — Final",
             created_by=self.creator,
             location="Nairobi",
-            format="11-a-side",
+            format=self.football_format,
             started_at=timezone.now(),
         )
 
@@ -86,8 +97,8 @@ class GameModelTests(TestCase):
             game=self.game,
             athlete=self.athlete,
             athlete_sport=self.football_profile,
-            position=self.midfielder,
             team=GameParticipant.Team.A,
+            position=self.midfielder,
             confirmed=True,
         )
 
@@ -107,6 +118,7 @@ class GameModelTests(TestCase):
             game=self.game,
             athlete=self.athlete,
             athlete_sport=self.football_profile,
+            team=GameParticipant.Team.A,
         )
         stat = GameStat(
             game=self.game,
@@ -123,13 +135,14 @@ class GameModelTests(TestCase):
             game=self.game,
             athlete=self.athlete,
             athlete_sport=self.football_profile,
+            team=GameParticipant.Team.A,
         )
         other_game = Game.objects.create(
             sport=self.football,
             title="Nairobi Youth Cup — Semi-final",
             created_by=self.creator,
             location="Nairobi",
-            format="11-a-side",
+            format=self.football_format,
         )
         stat = GameStat(
             game=other_game,
@@ -158,10 +171,78 @@ class GameModelTests(TestCase):
             title="Invalid schedule",
             created_by=self.creator,
             location="Nairobi",
-            format="11-a-side",
+            format=self.football_format,
             started_at=timezone.now(),
             ended_at=timezone.now() - timedelta(minutes=10),
         )
 
         with self.assertRaises(ValidationError):
             game.full_clean()
+
+    def test_team_is_required_for_a_team_format(self):
+        participant = GameParticipant(
+            game=self.game,
+            athlete=self.athlete,
+            athlete_sport=self.football_profile,
+        )
+
+        with self.assertRaises(ValidationError):
+            participant.full_clean()
+
+    def test_individual_format_rejects_a_team_assignment(self):
+        individual_game = Game.objects.create(
+            sport=self.athletics,
+            title="Nairobi 100 metres",
+            created_by=self.creator,
+            location="Nairobi",
+            format=self.athletics_format,
+        )
+        participant = GameParticipant(
+            game=individual_game,
+            athlete=self.athlete,
+            athlete_sport=self.athletics_profile,
+            team=GameParticipant.Team.A,
+        )
+
+        with self.assertRaises(ValidationError):
+            participant.full_clean()
+
+    def test_integer_stat_rejects_a_decimal_value(self):
+        participant = GameParticipant.objects.create(
+            game=self.game,
+            athlete=self.athlete,
+            athlete_sport=self.football_profile,
+            team=GameParticipant.Team.A,
+        )
+        stat = GameStat(
+            game=self.game,
+            participant=participant,
+            stat_type=self.goals,
+            value="1.5",
+        )
+
+        with self.assertRaises(ValidationError):
+            stat.full_clean()
+
+    def test_boolean_stat_requires_boolean_value_only(self):
+        yellow_card = StatType.objects.create(
+            sport=self.football,
+            name="Received a yellow card",
+            key="received_yellow_card",
+            value_type=StatType.ValueType.BOOLEAN,
+        )
+        participant = GameParticipant.objects.create(
+            game=self.game,
+            athlete=self.athlete,
+            athlete_sport=self.football_profile,
+            team=GameParticipant.Team.A,
+        )
+        stat = GameStat.objects.create(
+            game=self.game,
+            participant=participant,
+            stat_type=yellow_card,
+            boolean_value=True,
+        )
+
+        self.assertTrue(stat.boolean_value)
+        self.assertIsNone(stat.value)
