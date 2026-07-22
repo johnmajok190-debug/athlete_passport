@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'stats',
     'rest_framework',
     'api',
+    'drf_spectacular',
 ]
 
 MIDDLEWARE = [
@@ -137,4 +138,11 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
     ),
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Athlete Passport API",
+    "DESCRIPTION": "API documentation",
+    "VERSION": "1.0.0",
 }
