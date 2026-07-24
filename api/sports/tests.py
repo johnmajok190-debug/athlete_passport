@@ -27,9 +27,17 @@ class AthleteSportSerializerTests(TestCase):
             name="Basketball",
             supports_positions=True,
         )
+        self.football = Sport.objects.create(
+            name="Football",
+            supports_positions=True,
+        )
         self.point_guard = SportPosition.objects.create(
             sport=self.basketball,
             name="Point Guard",
+        )
+        self.midfielder = SportPosition.objects.create(
+            sport=self.football,
+            name="Midfielder",
         )
 
     def test_represents_sport_and_primary_position_with_ids_and_names(self):
@@ -74,6 +82,17 @@ class AthleteSportSerializerTests(TestCase):
         self.assertEqual(serializer.validated_data["sport"], self.basketball)
         self.assertEqual(serializer.validated_data["primary_position"], self.point_guard)
 
+    def test_rejects_position_from_different_sport(self):
+        serializer = AthleteSportWriteSerializer(
+            data={
+                "sport": str(self.basketball.id),
+                "primary_position": str(self.midfielder.id),
+                "is_primary": True,
+            }
+        )
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("primary_position", serializer.errors)
+
     def test_create_endpoint_returns_named_sport_and_position_references(self):
         client = APIClient()
         client.force_authenticate(user=self.athlete.user)
@@ -98,6 +117,21 @@ class AthleteSportSerializerTests(TestCase):
             response.data["primary_position"],
             {"id": str(self.point_guard.id), "name": "Point Guard"},
         )
+
+    def test_create_endpoint_user_without_profile_returns_400(self):
+        user_no_profile = User.objects.create_user(username="noprofile", password="test-password")
+        client = APIClient()
+        client.force_authenticate(user=user_no_profile)
+
+        response = client.post(
+            "/api/sports/athlete-sports/",
+            {
+                "sport": str(self.basketball.id),
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_update_endpoint_returns_named_sport_and_position_references(self):
         athlete_sport = AthleteSport.objects.create(
@@ -125,3 +159,13 @@ class AthleteSportSerializerTests(TestCase):
             response.data["primary_position"],
             {"id": str(self.point_guard.id), "name": "Point Guard"},
         )
+
+    def test_list_and_detail_sports(self):
+        client = APIClient()
+        response = client.get("/api/sports/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(len(response.data), 2)
+
+        response_detail = client.get(f"/api/sports/{self.basketball.id}/")
+        self.assertEqual(response_detail.status_code, status.HTTP_200_OK)
+        self.assertEqual(response_detail.data["name"], "Basketball")

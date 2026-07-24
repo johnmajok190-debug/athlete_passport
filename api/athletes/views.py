@@ -1,4 +1,4 @@
-from rest_framework import generics, permissions
+from rest_framework import generics, permissions, serializers
 from rest_framework.exceptions import NotFound
 
 from athletes.models import Athlete
@@ -11,7 +11,12 @@ class AthleteCreateView(generics.CreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def perform_create(self, serializer):
+        if hasattr(self.request.user, "athlete_profile"):
+            raise serializers.ValidationError(
+                {"detail": "An athlete profile already exists for this user."}
+            )
         serializer.save(user=self.request.user)
+
 
 
 class AthleteMeView(generics.RetrieveUpdateAPIView):

@@ -1,4 +1,4 @@
-from rest_framework import generics, permissions, status
+from rest_framework import generics, permissions, serializers, status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
@@ -24,18 +24,26 @@ class SportDetailView(generics.RetrieveAPIView):
     permission_classes = [AllowAny]
     queryset = Sport.objects.filter(is_active=True)
 
+
 class AthleteSportCreateView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return AthleteSport.objects.filter(
-            athlete=self.request.user.athlete_profile
-        ).select_related(
-            "sport",
-            "primary_position",
+        return (
+            AthleteSport.objects.filter(
+                athlete__user=self.request.user
+            )
+            .select_related(
+                "sport",
+                "primary_position",
+            )
         )
 
     def perform_create(self, serializer):
+        if not hasattr(self.request.user, "athlete_profile"):
+            raise serializers.ValidationError(
+                {"detail": "Athlete profile required to register a sport."}
+            )
         serializer.save(
             athlete=self.request.user.athlete_profile
         )

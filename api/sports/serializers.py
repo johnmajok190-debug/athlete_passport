@@ -58,3 +58,12 @@ class AthleteSportWriteSerializer(serializers.ModelSerializer):
             "started_playing",
         ]
         read_only_fields = ["id"]
+
+    def validate(self, attrs):
+        sport = attrs.get("sport") or (self.instance.sport if self.instance else None)
+        position = attrs.get("primary_position")
+        if position and sport and position.sport_id != sport.id:
+            raise serializers.ValidationError(
+                {"primary_position": "The selected position must belong to the selected sport."}
+            )
+        return attrs
