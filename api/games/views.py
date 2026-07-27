@@ -78,7 +78,10 @@ class GameParticipantDetailView(
 
     def get_queryset(self):
         return (
-            GameParticipant.objects.select_related(
+            GameParticipant.objects.filter(
+                athlete__user=self.request.user
+            )
+            .select_related(
                 "athlete",
                 "athlete_sport",
                 "position",

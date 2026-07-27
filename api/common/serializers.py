@@ -1,7 +1,8 @@
 from rest_framework import serializers
 
 from athletes.models import Athlete
-from sports.models import Sport, SportPosition
+from games.models import GameParticipant
+from sports.models import Sport, SportPosition, StatType
 
 
 class AthleteSummarySerializer(serializers.ModelSerializer):
@@ -15,6 +16,7 @@ class AthleteSummarySerializer(serializers.ModelSerializer):
             "country",
             "profile_photo",
         ]
+
 
 class SportSummarySerializer(serializers.ModelSerializer):
     class Meta:
@@ -32,3 +34,26 @@ class PositionSummarySerializer(serializers.ModelSerializer):
             "id",
             "name",
         ]
+
+
+class StatTypeSummarySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StatType
+        fields = [
+            "id",
+            "name",
+            "key",
+            "unit",
+            "value_type",
+        ]
+
+
+class GameParticipantSummarySerializer(serializers.ModelSerializer):
+    athlete = AthleteSummarySerializer(read_only=True)
+
+    class Meta:
+        model = GameParticipant
+        fields = [
+            "id",
+            "athlete",
+        ]
